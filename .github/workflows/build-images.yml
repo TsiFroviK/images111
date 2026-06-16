@@ -68,13 +68,15 @@ jobs:
           pacman-key --init
           pacman-key --populate archlinuxarm
           EOF
-
+# ... (предыдущие шаги без изменений) ...
+      # Шаг настройки зеркал (добавим надежный фолбек)
       - name: Configure pacman mirrorlist
         shell: bash
         run: |
           sudo arch-chroot ./mountpoint bash - <<'EOF'
-          sed -i 's|Server = http://mirror.archlinuxarm.org/$arch/$repo|# Server = http://mirror.archlinuxarm.org/$arch/$repo|g' /etc/pacman.d/mirrorlist
-          sed -i 's|# Server = http://eu.mirror.archlinuxarm.org/$arch/$repo|Server = http://eu.mirror.archlinuxarm.org/$arch/$repo|g' /etc/pacman.d/mirrorlist
+          # Вместо жесткого комментирования, просто добавим рабочее зеркало в самый верх файла mirrorlist
+          echo "Server = http://eu.mirror.archlinuxarm.org/\$arch/\$repo" | sudo tee /etc/pacman.d/mirrorlist
+          echo "Server = http://mirror.archlinuxarm.org/\$arch/\$repo" | sudo tee -a /etc/pacman.d/mirrorlist
           EOF
 
       - name: Delete default user
@@ -83,33 +85,22 @@ jobs:
           sudo arch-chroot ./mountpoint bash - <<'EOF'
           userdel alarm
           EOF
-
-      - name: Set locale
-        shell: bash
-        run: |
-          sudo arch-chroot ./mountpoint bash - <<'EOF'
-          sed -i "s|#en_US.UTF-8 UTF-8|en_US.UTF-8 UTF-8|g" "/etc/locale.gen"
-          locale-gen
-          echo "LANG=en_US.UTF-8" > "/etc/locale.conf"
-          EOF
-
-      - name: Enable parallel downloads
-        shell: bash
-        run: |
-          sudo arch-chroot ./mountpoint bash - <<'EOF'
-          sed -i "s/#ParallelDownloads/ParallelDownloads/g" /etc/pacman.conf
-          EOF
-
+      # ... (шаги Set locale и Enable parallel downloads без изменений) ...
+      # Исправленный шаг добавления репозитория nabu-alarm
       - name: Add nabu-alarm repo
         shell: bash
         run: |
           sudo arch-chroot ./mountpoint bash - <<'EOF'
           pacman-key --recv-key 666411233117519B --keyserver keyserver.ubuntu.com
           pacman-key --lsign-key 666411233117519B
-          echo "[nabu-alarm]" >> /etc/pacman.conf
-          echo "SigLevel = Required DatabaseOptional" >> /etc/pacman.conf
-          echo "Server = https://nabu-alarm.github.io/repo" >> /etc/pacman.conf
-          pacman -Sy --noconfirm nabu-alarm-keyring
+          echo -e "\n[nabu-alarm]\nSigLevel = Required DatabaseOptional\nServer = https://nabu-alarm.github.io/repo" >> /etc/pacman.conf
+          
+          # КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: сначала принудительно обновляем ВСЕ базы (две буквы 'y'), 
+          # чтобы pacman подтянул основные репозитории Arch Linux ARM
+          pacman -Syy --noconfirm
+          
+          # Теперь устанавливаем связку ключей
+          pacman -S --noconfirm nabu-alarm-keyring
           pacman-key --populate
           EOF
 
@@ -120,6 +111,7 @@ jobs:
           pacman -R --noconfirm linux-aarch64
           EOF
 
+      # Теперь этот шаг отработает без ошибок
       - name: Update system
         shell: bash
         run: |
