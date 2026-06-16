@@ -74,9 +74,9 @@ jobs:
         shell: bash
         run: |
           sudo arch-chroot ./mountpoint bash - <<'EOF'
-          # Вместо жесткого комментирования, просто добавим рабочее зеркало в самый верх файла mirrorlist
-          echo "Server = http://eu.mirror.archlinuxarm.org/\$arch/\$repo" | sudo tee /etc/pacman.d/mirrorlist
-          echo "Server = http://mirror.archlinuxarm.org/\$arch/\$repo" | sudo tee -a /etc/pacman.d/mirrorlist
+          # Очищаем файл и записываем зеркала напрямую без использования утилиты sudo
+          echo 'Server = http://eu.mirror.archlinuxarm.org/$arch/$repo' > /etc/pacman.d/mirrorlist
+          echo 'Server = http://mirror.archlinuxarm.org/$arch/$repo' >> /etc/pacman.d/mirrorlist
           EOF
 
       - name: Delete default user
